@@ -18,6 +18,9 @@ export default function StackNavigator() {
         <Stack.Screen name="listaUsuarios" 
         component={listaUsuarios} />
       
+      <Stack.Screen name="login" 
+        component={login} />
+        
       </Stack.Navigator>
       
      
