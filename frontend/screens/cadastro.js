@@ -3,6 +3,9 @@ import { useState } from 'react';
 import{ View, Text, TextInput, TouchableOpacity, 
     StyleSheet, Alert } from 'react-native';
 
+// No celular físico, substitua localhost pelo IP da máquina que executa o backend.
+const API_URL = 'http://localhost:3000';
+
 export default function Cadastro({navigation}) {
 
     const [nome, setNome] = useState('');
@@ -12,7 +15,7 @@ export default function Cadastro({navigation}) {
     async function cadastrarUsuario() {
         try {
             const resposta = 
-            await fetch('http://localhost:3000/usuarios', {
+            await fetch(`${API_URL}/usuarios`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -56,7 +59,7 @@ const styles = StyleSheet.create({
     borderRadius: 5
   },
   textoBotao: {
-    color: '#000',
+    color: '#fff',
     textAlign: 'center'
   }
 });

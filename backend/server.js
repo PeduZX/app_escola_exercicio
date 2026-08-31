@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const conexao = require('./dbconfig');
 
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
  
 const app = express();
@@ -12,18 +13,33 @@ app.use(cors());
 app.use(express.json());
 
 
+const uploadDirectory = path.join(__dirname, 'uploads');
+fs.mkdirSync(uploadDirectory, { recursive: true });
+
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
+    destination: (req, file, cb) => cb(null, uploadDirectory),
     filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 
-const upload =  multer({storage});
+const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) return cb(null, true);
+        cb(new Error('Envie apenas arquivos de imagem.'));
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 app.use(express.static('public'));
-app.use('uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadDirectory));
 
 app.post('/upload', upload.single('arquivo'), (req, res) => {
-    const {nome_original, nome_arquivo} = req.file;
+    if (!req.file) {
+        return res.status(400).json({ erro: 'Nenhuma imagem foi enviada.' });
+    }
+
+    const nome_original = req.file.originalname;
+    const nome_arquivo = req.file.filename;
 
     const sql = 'INSERT INTO imagem (nome_original, nome_arquivo) VALUES (?, ?)';
     conexao.query(sql, [nome_original, nome_arquivo], (err) => {
@@ -31,12 +47,18 @@ app.post('/upload', upload.single('arquivo'), (req, res) => {
             console.error('Erro ao salvar no banco' , err);
             return res.status(500).json({erro: 'Erro ao salvar no banco'});
         }
-        res.json({mensagem: 'Upload realizado com sucesso'})
+        res.json({
+            mensagem: 'Upload realizado com sucesso',
+            imagem: {
+                nome_original,
+                nome_arquivo
+            }
+        })
     })
 })
 
-app.get('/imagems', (req, res) => {
-    const sql = 'SELECT * FROM imagem ORDER BY id DESC';
+app.get(['/imagens', '/imagems'], (req, res) => {
+    const sql = 'SELECT * FROM imagem ORDER BY id_imagem DESC';
     conexao.query(sql , (err, result) => {
         if(err){
             console.error('Erro ao buscar imagens' , err);
@@ -117,6 +139,11 @@ app.post('/login', (req, res) => {
         }
     });
 });
+
+app.use((req, res) => {
+    res.status(404).json({ erro: 'Rota não encontrada.' });
+});
+
 
 
  

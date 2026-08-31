@@ -1,161 +1,157 @@
-import { useState, useEffect } from "react";
-import * as ImagePicker from "expo-image-picker";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Image,
-  Pressable,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { Alert, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function home({ navigation }) {
+// endereço
+const API_URL = 'http://192.168.0.3:3000';
+
+export default function Home({ navigation }) {
   const [imagem, setImagem] = useState(null);
-  const [erro, setErro] = useState("");
-  
+  const [enviando, setEnviando] = useState(false);
+
   async function tirarFoto() {
-    setErro("");
     const permissao = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissao.granted) {
-      setErro("Permissao da camera negada.");
+      Alert.alert('Permissão necessária', 'Permita o acesso à câmera para tirar uma foto.');
       return;
     }
+
     const resultado = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       quality: 0.7,
     });
-    if (!resultado.canceled) setImagem(resultado.assets[0].uri);
+
+    if (!resultado.canceled) setImagem(resultado.assets[0]);
   }
 
   async function escolherImagem() {
-    setErro("");
     const permissao = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissao.granted) {
-      setErro("Permissao da galeria negada.");
+      Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher uma foto.');
       return;
     }
+
     const resultado = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       quality: 0.7,
     });
-    if (!resultado.canceled) setImagem(resultado.assets[0].uri);
+
+    if (!resultado.canceled) setImagem(resultado.assets[0]);
   }
 
-  const enviarArquivo = async (imagemSelecionada) => {
-    const formData = new FormData();
+  async function enviarArquivo() {
+    if (!imagem) {
+      Alert.alert('Selecione ou tire uma foto antes de enviar.');
+      return;
+    }
 
-    data.append('image', {
-      uri: imagemSelecionada.uri,
-      type: 'image/jpeg',
-      name: 'image.jpg'
-    })
+    const formData = new FormData();
+    formData.append('arquivo', {
+      uri: imagem.uri,
+      name: imagem.fileName || `foto-${Date.now()}.jpg`,
+      type: imagem.mimeType || 'image/jpeg',
+    });
+
+    const controlador = new AbortController();
+    const tempoLimite = setTimeout(() => controlador.abort(), 15000);
 
     try {
-      const resposta = await fetch('http://localhost:3000/upload', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-      })
-      const resultado = await resposta.json();
-      console.log(resultado);
-    } catch (error){
-      console.error('Erro no upload: ' ,error);
+      setEnviando(true);
+      const resposta = await fetch(`${API_URL}/upload`, {
+        method: 'POST',
+        body: formData,
+        signal: controlador.signal,
+      });
+      const corpo = await resposta.text();
+      let dados;
+
+      try {
+        dados = JSON.parse(corpo);
+      } catch {
+        throw new Error(`O servidor respondeu em formato inválido (HTTP ${resposta.status}). Reinicie o backend.`);
+      }
+
+      if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível enviar a foto.');
+
+      Alert.alert('Sucesso', dados.mensagem);
+      setImagem({
+        uri: `${API_URL}/uploads/${encodeURIComponent(dados.imagem.nome_arquivo)}?v=${Date.now()}`,
+      });
+    } catch (erro) {
+      const mensagem = erro.name === 'AbortError'
+        ? 'Não foi possível alcançar o servidor em 15 segundos. Confira o IP e se o backend está rodando.'
+        : erro.message;
+      Alert.alert('Erro ao enviar foto', mensagem);
+    } finally {
+      clearTimeout(tempoLimite);
+      setEnviando(false);
+    }
   }
-}
 
   return (
     <View style={styles.container}>
       <Text style={styles.titulo}>App Escola</Text>
 
-      <TouchableOpacity
-        style={styles.botao}
-        onPress={() => navigation.navigate("Cadastro")}
-      >
+      <TouchableOpacity style={styles.botao} onPress={() => navigation.navigate('Cadastro')}>
         <Text style={styles.textoBotao}>Tela cadastro</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.botao}
-        onPress={() => navigation.navigate("login")}
-      >
+      <TouchableOpacity style={styles.botao} onPress={() => navigation.navigate('login')}>
         <Text style={styles.textoBotao}>Tela Login</Text>
       </TouchableOpacity>
 
-      <View style={styles.container}>
-        <Text style={styles.titulo}>Minha foto</Text>
-        {imagem && <Image source={{ uri: imagem }} style={styles.foto} />}
-        {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-        <Pressable onPress={tirarFoto} style={styles.botao}>
-          <Text>Tirar foto</Text>
-        </Pressable>
-        <Pressable onPress={escolherImagem} style={styles.botao}>
-          <Text>Escolher da galeria</Text>
-        </Pressable>
-      </View>
-
+      <Text style={styles.subtitulo}>Minha foto</Text>
       {imagem ? (
-        <Image
-          source={{ uri: imagem }}
-          style={{ width: 220, height: 220, borderRadius: 12 }}
-        />
+        <Image source={{ uri: imagem.uri }} style={styles.foto} />
       ) : (
         <Text>Nenhuma imagem selecionada.</Text>
       )}
+
+      <Pressable onPress={tirarFoto} style={styles.botao} disabled={enviando}>
+        <Text style={styles.textoBotao}>Tirar foto</Text>
+      </Pressable>
+      <Pressable onPress={escolherImagem} style={styles.botao} disabled={enviando}>
+        <Text style={styles.textoBotao}>Escolher da galeria</Text>
+      </Pressable>
+      <Pressable onPress={enviarArquivo} style={styles.botao} disabled={enviando}>
+        <Text style={styles.textoBotao}>{enviando ? 'Enviando...' : 'Enviar foto'}</Text>
+      </Pressable>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
   },
-
-  containerLoading: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
   titulo: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: "center",
+    textAlign: 'center',
   },
-
-  card: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 12,
-    marginBottom: 10,
+  subtitulo: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 24,
+    marginBottom: 12,
   },
-
-  nomeFilme: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-
-  generoFilme: {
-    fontSize: 14,
-    color: "#666",
-  },
-
   botao: {
-    backgroundColor: "#007BFF",
+    backgroundColor: '#007BFF',
     padding: 12,
     borderRadius: 5,
     marginTop: 10,
   },
   textoBotao: {
-    color: "#fff",
-    textAlign: "center",
-    fontWeight: "bold",
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  foto: {
+    width: 220,
+    height: 220,
+    borderRadius: 12,
+    alignSelf: 'center',
   },
 });
