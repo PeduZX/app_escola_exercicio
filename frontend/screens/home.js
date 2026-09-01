@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -8,6 +8,25 @@ const API_URL = 'http://192.168.0.3:3000';
 export default function Home({ navigation }) {
   const [imagem, setImagem] = useState(null);
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    buscarUltimaImagem();
+  }, []);
+
+  async function buscarUltimaImagem() {
+    try {
+      const resposta = await fetch(`${API_URL}/imagens`);
+      const dados = await resposta.json();
+
+      if (Array.isArray(dados) && dados.length > 0) {
+        setImagem({
+          uri: `${API_URL}/uploads/${encodeURIComponent(dados[0].nome_arquivo)}?v=${Date.now()}`,
+        });
+      }
+    } catch (erro) {
+      console.log('Erro ao buscar imagem existente:', erro.message);
+    }
+  }
 
   async function tirarFoto() {
     const permissao = await ImagePicker.requestCameraPermissionsAsync();
