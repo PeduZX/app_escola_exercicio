@@ -39,10 +39,12 @@ export default function Home({ navigation }) {
   const [localAtual, setLocalAtual] = useState(null);
   const [aviso, setAviso] = useState("Obtendo localização...");
   const pontos = [
-{ id: '1', nome: 'Biblioteca', descricao: 'Estudo',
-latitude: -23.5489, longitude: -46.6388 },
-{ id: '2', nome: 'Museu', descricao: 'Visita',
-latitude: -23.5567, longitude: -46.6394 },
+{ id: '1', nome: 'Unisinos - Campus São Leopoldo', descricao: 'Av. Unisinos, 950 - Cristo Rei',
+latitude: -29.7976, longitude: -51.1518 },
+{ id: '2', nome: 'Tecnosinos - Av. Theodomiro Porto da Fonseca', descricao: 'Hospital Centenário',
+latitude: -29.7935, longitude: -51.1490 },
+{ id: '3', nome: 'Tecnosinos - Av. SAP', descricao: 'Cristo Rei',
+latitude: -29.7970, longitude: -51.1500 },
 ];
  
   useEffect(() => {
