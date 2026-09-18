@@ -48,7 +48,7 @@ latitude: -29.7970, longitude: -51.1500 },
 ];
  
   useEffect(() => {
-    let ativo = true; // Evita atualizar após desmontar.
+    let ativo = true;
     async function localizar() {
       try {
         const permissao = await Location.requestForegroundPermissionsAsync();
@@ -63,7 +63,7 @@ latitude: -29.7970, longitude: -51.1500 },
           longitude: pos.coords.longitude,
         };
         setLocalAtual(coord);
-        setRegiao({ ...coord, latitudeDelta: 0.02, longitudeDelta: 0.02 }); // Centraliza ao obter GPS.
+        setRegiao({ ...coord, latitudeDelta: 0.02, longitudeDelta: 0.02 });
         setAviso("Localização encontrada");
       } catch (erro) {
         if (ativo) setAviso("GPS indisponível. Mapa padrão.");
